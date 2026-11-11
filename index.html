@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>단어 바꾸기 트윗 생성기</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f3f4f6;--card:#fff;--text:#0f1419;--sub:#536471;--line:#eff3f4;--accent:#1d9bf0;--input:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0d10;--card:#000;--text:#e7e9ea;--sub:#71767b;--line:#2f3336;--accent:#1d9bf0;--input:#16181c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b0d10;--card:#000;--text:#e7e9ea;--sub:#71767b;--line:#2f3336;--accent:#1d9bf0;--input:#16181c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;display:flex;justify-content:center;padding:24px 14px}
+main{width:100%;max-width:560px}
+h1{font-size:18px;margin:0 0 12px}
+.ctl{display:flex;gap:8px;margin-bottom:16px}
+input{flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--input);color:var(--text);font-size:16px;font-family:inherit}
+input:focus{outline:2px solid var(--accent)}
+button{padding:0 16px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.tweet{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.head{display:flex;gap:10px;align-items:center}
+.av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#7c5cff,#1d9bf0);flex:none}
+.nm{font-weight:700;font-size:15px}.hd{color:var(--sub);font-size:14px}
+.body{font-size:17px;line-height:1.55;margin:12px 0;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}
+.meta{color:var(--sub);font-size:14px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.meta b{color:var(--text)}
+.acts{display:flex;justify-content:space-around;color:var(--sub);font-size:14px;padding-top:12px}
+.note{color:var(--sub);font-size:13px;margin-top:12px}
+.imgbtn{width:100%;height:48px;margin-top:14px;font-size:16px}
+.imgbtn:disabled{opacity:.6;cursor:default}
+</style>
+</head>
+<body>
+<main>
+<h1>"AI" 자리에 넣을 단어</h1>
+<div class="ctl">
+  <input id="w" value="AI" maxlength="30" placeholder="예: 포토샵, 웹툰, 전동킥보드">
+  <button id="copy">복사</button>
+</div>
+<article class="tweet">
+  <div class="head"><div class="av"></div><div><div class="nm">그뭔씹선생좌</div><div class="hd">@cool_jjin</div></div></div>
+  <div class="body" id="out"></div>
+  <div class="meta">오전 11:11 · 2026년 11월 11일 · <b>1.2만</b> 조회수</div>
+  <div class="acts"><span>💬 128</span><span>🔁 342</span><span>♡ 2.1천</span><span>📊</span></div>
+</article>
+<button id="img" class="imgbtn" hidden>이미지로 저장</button>
+<p class="note">을/를 조사는 단어에 맞게 자동으로 바뀝니다.</p>
+</main>
+<script>
+function hasBatchim(s){
+  var c=s.trim().slice(-1);if(!c)return false;
+  var code=c.charCodeAt(0);
+  if(code>=0xAC00&&code<=0xD7A3)return (code-0xAC00)%28!==0;
+  if(/[0-9]/.test(c))return "0136 78".indexOf(c)>-1;
+  if(/[a-zA-Z]/.test(c))return "lmnrLMNR".indexOf(c)>-1;
+  return false;
+}
+function build(w){
+  var r=hasBatchim(w)?"을":"를";
+  return w+"에 대한 생각 나는 좀 다름\n\n"+
+  "그림, 창작? 쪽에서 "+w+r+" 되게 싫어하던데\n\n"+
+  "내가 "+w+"보다 잘 그리면 되는거 아닌가 싶은 생각이 들고\n\n"+
+  "솔직히 요즘 님들이 쓰는 폰에도 "+w+" 들어가고 유튜브든 어디든 "+w+" 편집 보정 그림 쓰라고 말하는 중인데 "+w+" 비중이 줄어들 수가 없지 않나";
+}
+var inp=document.getElementById("w"),out=document.getElementById("out"),btn=document.getElementById("copy");
+function render(){out.textContent=build(inp.value.trim()||"AI");}
+inp.addEventListener("input",render);render();
+btn.addEventListener("click",function(){
+  var t=out.textContent;
+  function ok(){btn.textContent="복사됨 ✓";setTimeout(function(){btn.textContent="복사"},1500)}
+  try{navigator.clipboard.writeText(t).then(ok,fb)}catch(e){fb()}
+  function fb(){var a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");ok()}catch(e){}a.remove()}
+});
+var FONT='-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif';
+function wrap(ctx,text,max){
+  var out=[];
+  text.split('\n').forEach(function(p){
+    if(!p){out.push('');return}
+    var line='';
+    p.split(' ').forEach(function(w){
+      var t=line?line+' '+w:w;
+      if(ctx.measureText(t).width<=max){line=t;return}
+      if(line){out.push(line);line=''}
+      if(ctx.measureText(w).width<=max){line=w;return}
+      for(var i=0;i<w.length;i++){
+        var t2=line+w[i];
+        if(ctx.measureText(t2).width>max&&line){out.push(line);line=w[i]}else line=t2;
+      }
+    });
+    out.push(line);
+  });
+  return out;
+}
+function makeCanvas(){
+  var cs=getComputedStyle(document.documentElement);
+  function v(n){return cs.getPropertyValue(n).trim()}
+  var S=2,W=600,P=24,LH=28;
+  var c=document.createElement('canvas');
+  var x=c.getContext('2d');
+  x.font='18px '+FONT;
+  var lines=wrap(x,out.textContent,W-P*2);
+  var bodyY=P+44+16;
+  var metaY=bodyY+lines.length*LH+12;
+  var H=metaY+44+30+20;
+  c.width=W*S;c.height=H*S;
+  x=c.getContext('2d');x.scale(S,S);x.textBaseline='alphabetic';
+  x.fillStyle=v('--card');x.fillRect(0,0,W,H);
+  var g=x.createLinearGradient(P,P,P+44,P+44);g.addColorStop(0,'#7c5cff');g.addColorStop(1,'#1d9bf0');
+  x.fillStyle=g;x.beginPath();x.arc(P+22,P+22,22,0,Math.PI*2);x.fill();
+  x.fillStyle=v('--text');x.font='700 16px '+FONT;x.fillText(document.querySelector('.nm').textContent,P+54,P+19);
+  x.fillStyle=v('--sub');x.font='14px '+FONT;x.fillText(document.querySelector('.hd').textContent,P+54,P+39);
+  x.fillStyle=v('--text');x.font='18px '+FONT;
+  lines.forEach(function(l,i){x.fillText(l,P,bodyY+20+i*LH)});
+  x.fillStyle=v('--line');x.fillRect(P,metaY,W-P*2,1);x.fillRect(P,metaY+44,W-P*2,1);
+  var mx=P,my=metaY+28;
+  function seg(t,bold,col){x.font=(bold?'700 ':'')+'14px '+FONT;x.fillStyle=col;x.fillText(t,mx,my);mx+=x.measureText(t).width}
+  seg('오전 11:11 · 2026년 11월 11일 · ',false,v('--sub'));seg('1.2만',true,v('--text'));seg(' 조회수',false,v('--sub'));
+  x.fillStyle=v('--sub');x.font='14px '+FONT;x.textAlign='center';
+  ['💬 128','🔁 342','♡ 2.1천','📊'].forEach(function(t,i){x.fillText(t,P+(W-P*2)*(i+0.5)/4,metaY+44+30)});
+  return c;
+}
+var ib=document.getElementById('img');
+if(window.claude&&claude.use){
+  claude.use('downloads').then(function(d){
+    if(!d)return;
+    ib.hidden=false;
+    ib.addEventListener('click',function(){
+      ib.disabled=true;
+      var c=makeCanvas();
+      c.toBlob(function(b){
+        if(!b){ib.disabled=false;return}
+        d.save({filename:'tweet.png',data:b}).then(function(){ib.textContent='저장됨 ✓'},function(){}).then(function(){
+          ib.disabled=false;setTimeout(function(){ib.textContent='이미지로 저장'},1500);
+        });
+      },'image/png');
+    });
+  },function(){});
+}
+</script>
+</body>
+</html>
