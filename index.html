@@ -44,7 +44,7 @@ button{padding:0 16px;border:0;border-radius:12px;background:var(--accent);color
   <div class="meta">오전 11:11 · 2026년 11월 11일 · <b>1.2만</b> 조회수</div>
   <div class="acts"><span>💬 128</span><span>🔁 342</span><span>♡ 2.1천</span><span>📊</span></div>
 </article>
-<button id="img" class="imgbtn" hidden>이미지로 저장</button>
+<button id="img" class="imgbtn">이미지로 저장</button>
 <p class="note">을/를 조사는 단어에 맞게 자동으로 바뀝니다.</p>
 </main>
 <script>
@@ -121,7 +121,7 @@ function makeCanvas(){
   return c;
 }
 var ib=document.getElementById('img');
-if(window.claude&&claude.use){
+if(false){
   claude.use('downloads').then(function(d){
     if(!d)return;
     ib.hidden=false;
@@ -137,6 +137,30 @@ if(window.claude&&claude.use){
     });
   },function(){});
 }
+var prev=document.createElement('div');
+ib.insertAdjacentElement('afterend',prev);
+function showImg(c){
+  prev.textContent='';
+  var im=new Image();im.src=c.toDataURL('image/png');
+  im.style.cssText='width:100%;margin-top:14px;border-radius:16px;border:1px solid var(--line)';
+  var n=document.createElement('p');n.className='note';
+  n.textContent='이 환경에서는 바로 저장이 안 돼요. 위 이미지를 길게 눌러서(PC는 우클릭) 저장해 주세요.';
+  prev.appendChild(im);prev.appendChild(n);
+}
+ib.addEventListener('click',function(){
+  var c=makeCanvas();
+  c.toBlob(function(b){
+    if(!b)return;
+    var p=(window.claude&&claude.use)?claude.use('downloads'):null;
+    Promise.resolve(p).catch(function(){return null}).then(function(d){
+      if(!d){showImg(c);return}
+      d.save({filename:'tweet.png',data:b}).then(function(){
+        prev.textContent='';ib.textContent='저장됨 ✓';
+        setTimeout(function(){ib.textContent='이미지로 저장'},1500);
+      },function(e){if(!e||e.code!=='declined')showImg(c)});
+    });
+  },'image/png');
+});
 </script>
 </body>
 </html>
