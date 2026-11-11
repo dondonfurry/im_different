@@ -29,11 +29,15 @@ button{padding:0 16px;border:0;border-radius:12px;background:var(--accent);color
 .note{color:var(--sub);font-size:13px;margin-top:12px}
 .imgbtn{width:100%;height:48px;margin-top:14px;font-size:16px}
 .imgbtn:disabled{opacity:.6;cursor:default}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{height:36px;padding:0 14px;border-radius:999px;background:var(--input);color:var(--text);border:1px solid var(--line);font-size:14px;font-weight:600}
+.chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 </style>
 </head>
 <body>
 <main>
-<h1>"AI" 자리에 넣을 단어</h1>
+<h1>분류를 고르고 단어를 넣어주세요</h1>
+<div class="chips" id="chips"></div>
 <div class="ctl">
   <input id="w" value="AI" maxlength="30" placeholder="예: 포토샵, 웹툰, 전동킥보드">
   <button id="copy">복사</button>
@@ -56,15 +60,99 @@ function hasBatchim(s){
   if(/[a-zA-Z]/.test(c))return "lmnrLMNR".indexOf(c)>-1;
   return false;
 }
-function build(w){
+function buildOld(w){
   var r=hasBatchim(w)?"을":"를";
   return w+"에 대한 생각 나는 좀 다름\n\n"+
   "그림, 창작? 쪽에서 "+w+r+" 되게 싫어하던데\n\n"+
   "내가 "+w+"보다 잘 그리면 되는거 아닌가 싶은 생각이 들고\n\n"+
   "솔직히 요즘 님들이 쓰는 폰에도 "+w+" 들어가고 유튜브든 어디든 "+w+" 편집 보정 그림 쓰라고 말하는 중인데 "+w+" 비중이 줄어들 수가 없지 않나";
 }
+var CATS={
+  ai:{name:'AI',def:'AI',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '그림, 창작? 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 잘 그리면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 쓰는 폰에도 {W} 들어가고 유튜브든 어디든 {W} 편집 보정 그림 쓰라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']},
+  food:{name:'음식',def:'마라탕',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '요리, 건강식? 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 맛있게 만들면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 가는 편의점에도 {W} 들어가고 GS든 CU든 어디든 {W} 신상 먹으라고 밀고 있는데 {W} 비중이 줄어들 수가 없지 않나']},
+  ride:{name:'교통수단',def:'전동킥보드',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '도로, 보행자? 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 조심해서 타면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 쓰는 앱에도 {W} 들어가고 카카오든 티맵이든 어디든 {W} 타라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']},
+  sport:{name:'운동',def:'크로스핏',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '운동 좀 한다는 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 잘 하면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 보는 유튜브에도 {W} 나오고 인스타든 숏츠든 어디든 {W} 하라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']},
+  game:{name:'게임',def:'롤',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '커뮤, 스트리머? 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 잘 하면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 보는 방송에도 {W} 나오고 치지직이든 유튜브든 어디든 {W} 하라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']},
+  fashion:{name:'패션',def:'크롭티',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '옷, 스타일? 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 잘 입으면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 쓰는 쇼핑앱에도 {W} 들어가고 무신사든 지그재그든 어디든 {W} 입으라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']},
+  music:{name:'음악',def:'오토튠',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '작곡, 밴드? 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 잘 만들면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 듣는 플레이리스트에도 {W} 들어가고 멜론이든 스포티파이든 어디든 {W} 들으라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']},
+  furry:{name:'퍼리',def:'퍼슈트',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '퍼리 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 잘 만들면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 보는 트위터에도 {W} 나오고 컨벤션이든 커미션이든 어디든 {W} 하라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']},
+  net:{name:'인터넷',def:'숏폼',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '커뮤, 블로그? 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 안 보면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 쓰는 앱에도 {W} 들어가고 인스타든 유튜브든 어디든 {W} 보라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']},
+  anime:{name:'애니',def:'이세계물',lines:[
+    '{W}에 대한 생각 나는 좀 다름',
+    '만화, 애니? 쪽에서 {W}{R} 되게 싫어하던데',
+    '내가 {W}보다 재밌는 걸 보면 되는거 아닌가 싶은 생각이 들고',
+    '솔직히 요즘 님들이 보는 OTT에도 {W} 들어가고 넷플릭스든 라프텔이든 어디든 {W} 보라고 말하는 중인데 {W} 비중이 줄어들 수가 없지 않나']}
+};
+function addCat(k,n,d,a,b,c){
+  CATS[k]={name:n,def:d,lines:['{W}에 대한 생각 나는 좀 다름',a+' 쪽에서 {W}{R} 되게 싫어하던데','내가 {W}보다 '+b+' 되는거 아닌가 싶은 생각이 들고','솔직히 요즘 님들이 '+c+' {W} 비중이 줄어들 수가 없지 않나']};
+}
+addCat('movie','영화','리메이크','영화, 드라마?','재밌는 거 보면','가는 영화관에도 {W} 걸리고 CGV든 메가박스든 어디든 {W} 보라고 말하는 중인데');
+addCat('idol','아이돌','직칼','팬덤, 덕질?','열심히 덕질하면','보는 유튜브에도 {W} 나오고 위버스든 인스타든 어디든 {W} 보라고 말하는 중인데');
+addCat('pet','반려동물','강아지옷','동물, 반려인?','잘 돌보면','가는 펫샵에도 {W} 들어가고 쿠팡이든 오늘의집이든 어디든 {W} 사라고 말하는 중인데');
+addCat('cafe','카페','제로음료','카페, 바리스타?','맛있게 타면','가는 카페에도 {W} 들어가고 스타벅스든 메가커피든 어디든 {W} 시키라고 말하는 중인데');
+addCat('drink','술','하이볼','술, 애주가?','맛있게 말면','가는 술집에도 {W} 들어가고 이자카야든 포차든 어디든 {W} 마시라고 말하는 중인데');
+addCat('study','공부','인강','학교, 학원?','열심히 하면','쓰는 앱에도 {W} 들어가고 유튜브든 EBS든 어디든 {W} 보라고 말하는 중인데');
+addCat('work','직장','재택근무','회사, 팀장?','일 잘하면','다니는 회사에도 {W} 들어가고 슬랙이든 노션이든 어디든 {W} 쓰라고 말하는 중인데');
+addCat('travel','여행','패키지여행','여행, 배낭?','알차게 다니면','쓰는 앱에도 {W} 들어가고 야놀자든 에어비앤비든 어디든 {W} 가라고 말하는 중인데');
+addCat('beauty','뷰티','필러','화장, 피부?','잘 가꾸면','가는 올리브영에도 {W} 들어가고 유튜브든 화해든 어디든 {W} 쓰라고 말하는 중인데');
+addCat('car','자동차','전기차','운전, 정비?','잘 몰면','타는 도로에도 {W} 늘어나고 현대든 기아든 어디든 {W} 타라고 말하는 중인데');
+addCat('novel','웹소설','회귀물','소설, 작가?','재밌게 쓰면','보는 앱에도 {W} 들어가고 카카오페이지든 문피아든 어디든 {W} 보라고 말하는 중인데');
+var cat='ai';
+function build(w){
+  var r=hasBatchim(w)?'을':'를';
+  return CATS[cat].lines.join('\n\n').replace(/\{W\}/g,w).replace(/\{R\}/g,r);
+}
+var chipsEl=document.getElementById('chips');
+Object.keys(CATS).forEach(function(k){
+  var b=document.createElement('button');
+  b.type='button';b.className='chip'+(k===cat?' on':'');b.textContent=CATS[k].name;b.dataset.k=k;
+  b.addEventListener('click',function(){
+    var cur=inp.value.trim();
+    if(!cur||cur===CATS[cat].def)inp.value=CATS[k].def;
+    cat=k;
+    Array.prototype.forEach.call(chipsEl.children,function(c){c.className='chip'+(c.dataset.k===cat?' on':'')});
+    render();
+  });
+  chipsEl.appendChild(b);
+});
 var inp=document.getElementById("w"),out=document.getElementById("out"),btn=document.getElementById("copy");
-function render(){out.textContent=build(inp.value.trim()||"AI");}
+function render(){out.textContent=build(inp.value.trim()||CATS[cat].def);}
 inp.addEventListener("input",render);render();
 btn.addEventListener("click",function(){
   var t=out.textContent;
